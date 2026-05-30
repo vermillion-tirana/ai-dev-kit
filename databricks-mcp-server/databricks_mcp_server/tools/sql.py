@@ -64,6 +64,7 @@ def execute_sql_multi(
     schema: str = None,
     timeout: int = 180,
     max_workers: int = 4,
+    sample_size: int = 5,
 ) -> Dict[str, Any]:
     """
     Execute multiple SQL statements with dependency-aware parallelism.
@@ -76,6 +77,11 @@ def execute_sql_multi(
     auto-tagging. Only use execute_sql/execute_sql_multi for queries (SELECT,
     INSERT, UPDATE) and table DDL (CREATE TABLE, DROP TABLE).
 
+    Each query result reports the full ``result_rows`` count but only includes
+    ``sample_results`` rows inline. Raise ``sample_size`` (or set it <= 0 for
+    all rows) when you need to see more than the default 5 — avoids the
+    ``array_join(collect_list(...))`` workaround for inspecting full result sets.
+
     Args:
         sql_content: SQL content with multiple statements separated by ;
         warehouse_id: Optional warehouse ID. If not provided, auto-selects one.
@@ -83,6 +89,8 @@ def execute_sql_multi(
         schema: Optional schema context for unqualified table names.
         timeout: Timeout per query in seconds (default: 180)
         max_workers: Maximum parallel queries per group (default: 4)
+        sample_size: Max rows returned per query in ``sample_results``
+            (default: 5). Set <= 0 to return all rows.
 
     Returns:
         Dictionary with results per query and execution summary.
@@ -94,6 +102,7 @@ def execute_sql_multi(
         schema=schema,
         timeout=timeout,
         max_workers=max_workers,
+        sample_size=sample_size,
     )
 
 

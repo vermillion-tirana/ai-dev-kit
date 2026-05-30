@@ -75,6 +75,7 @@ def execute_sql_multi(
     schema: Optional[str] = None,
     timeout: int = 180,
     max_workers: int = 4,
+    sample_size: int = 5,
 ) -> Dict[str, Any]:
     """
     Execute multiple SQL statements with dependency-aware parallelism.
@@ -93,6 +94,8 @@ def execute_sql_multi(
         schema: Optional schema context. If not provided, use fully qualified names.
         timeout: Timeout per query in seconds (default: 180)
         max_workers: Maximum parallel queries per group (default: 4)
+        sample_size: Max rows returned per query in ``sample_results``
+            (default: 5). Set <= 0 to return all rows.
 
     Returns:
         Dictionary with:
@@ -102,7 +105,7 @@ def execute_sql_multi(
             - execution_time: Time taken in seconds
             - query_preview: First 100 chars of the query
             - result_rows: Number of rows returned (for success)
-            - sample_results: First 5 rows (for success)
+            - sample_results: Up to ``sample_size`` rows (default 5; all if sample_size <= 0)
             - error: Error message (for error)
             - error_category: Error type like SYNTAX_ERROR, MISSING_TABLE (for error)
             - suggestion: Hint on how to fix (for error)
@@ -143,6 +146,7 @@ def execute_sql_multi(
     executor = SQLParallelExecutor(
         warehouse_id=warehouse_id,
         max_workers=max_workers,
+        sample_size=sample_size,
     )
     return executor.execute(
         sql_content=sql_content,

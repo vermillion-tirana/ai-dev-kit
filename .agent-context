@@ -1,0 +1,20 @@
+# Agent Context - Recovery Summary
+# Max 20 lines. Updated by agent on Stop hook.
+
+## Feature
+Add sample_size param to execute_sql_multi (MCP + tools-core) so callers can request more than 5 displayed rows
+Add sample_size param to execute_sql_multi (MCP + tools-core) so callers can request more than 5 displayed rows
+
+## Current State
+Not started. No work has been done yet.
+
+## Key Files
+(none yet)
+
+## Blockers
+None
+
+## Next Actions
+1. Review the codebase
+2. Plan implementation approach
+3. Begin work on step 1

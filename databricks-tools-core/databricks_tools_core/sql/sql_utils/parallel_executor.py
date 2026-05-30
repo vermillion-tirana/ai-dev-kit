@@ -33,6 +33,7 @@ class SQLParallelExecutor:
         warehouse_id: str,
         max_workers: int = 4,
         client: Optional[WorkspaceClient] = None,
+        sample_size: int = 5,
     ):
         """
         Initialize the parallel executor.
@@ -41,9 +42,12 @@ class SQLParallelExecutor:
             warehouse_id: SQL warehouse ID to use for queries
             max_workers: Maximum parallel queries per group (default: 4)
             client: Optional WorkspaceClient (creates new one if not provided)
+            sample_size: Max rows returned per query in ``sample_results``
+                (default: 5). Set <= 0 to return all rows.
         """
         self.warehouse_id = warehouse_id
         self.max_workers = max_workers
+        self.sample_size = sample_size
         self.client = client or get_workspace_client()
         self.analyzer = SQLDependencyAnalyzer()
         self.sql_executor = SQLExecutor(warehouse_id=warehouse_id, client=self.client)
@@ -180,7 +184,13 @@ class SQLParallelExecutor:
                     "execution_time": dt,
                     "query_preview": query_preview,
                     "result_rows": row_count,
-                    "sample_results": result_data[:5] if result_data else [],
+                    "sample_results": (
+                        []
+                        if not result_data
+                        else result_data
+                        if self.sample_size <= 0
+                        else result_data[: self.sample_size]
+                    ),
                     "group_number": group_num,
                     "group_size": len(query_indices),
                     "is_parallel": is_parallel,
