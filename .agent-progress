@@ -1,0 +1,10 @@
+# Agent Progress - mcp-sql-sample-size
+# Format: KEY=VALUE, one per line. Agents append, last value wins.
+# Created: 2026-05-30T03:00:16Z
+
+feature=mcp-sql-sample-size
+name=Add sample_size param to execute_sql_multi (MCP + tools-core) so callers can request more than 5 displayed rows
+status=pending
+step=0
+step_name=Not started
+created=2026-05-30T03:00:16Z
