@@ -5,6 +5,7 @@ Functions for listing and selecting SQL warehouses.
 """
 
 import logging
+import os
 import time
 from typing import Any, Dict, List, Optional
 
@@ -22,6 +23,13 @@ def invalidate_warehouse_cache() -> None:
     """Clear cached warehouse — call on warehouse errors."""
     _warehouse_cache["id"] = None
     _warehouse_cache["timestamp"] = 0.0
+
+
+def _denylisted_ids() -> set:
+    """Warehouse IDs to never auto-select, from DATABRICKS_WAREHOUSE_DENYLIST
+    (comma-separated). Use for known-broken warehouses that never reach RUNNING."""
+    raw = os.environ.get("DATABRICKS_WAREHOUSE_DENYLIST", "")
+    return {x.strip() for x in raw.split(",") if x.strip()}
 
 
 def list_warehouses(limit: int = 20) -> List[Dict[str, Any]]:
@@ -100,8 +108,14 @@ def get_best_warehouse() -> Optional[str]:
     """
     Select the best available SQL warehouse based on priority rules.
 
+    If DATABRICKS_WAREHOUSE_ID is set, it is returned directly and the
+    heuristic below is skipped entirely — the reliable path in workspaces
+    where the name-based 'shared' heuristic doesn't apply (e.g. EDP) and
+    auto-select can otherwise grab a broken/never-ready warehouse.
+
     Within each priority tier, warehouses created by the current user are
-    preferred (soft preference — no warehouses are excluded).
+    preferred (soft preference — no warehouses are excluded). IDs listed in
+    DATABRICKS_WAREHOUSE_DENYLIST are excluded from selection.
 
     Priority:
     1. Running warehouse named "Shared endpoint" or "dbdemos-shared-endpoint"
@@ -116,6 +130,11 @@ def get_best_warehouse() -> Optional[str]:
     Raises:
         Exception: If API request fails
     """
+    pinned = os.environ.get("DATABRICKS_WAREHOUSE_ID", "").strip()
+    if pinned:
+        logger.debug(f"Using pinned warehouse DATABRICKS_WAREHOUSE_ID={pinned}")
+        return pinned
+
     now = time.monotonic()
     if _warehouse_cache["id"] and (now - _warehouse_cache["timestamp"]) < _WAREHOUSE_CACHE_TTL:
         logger.debug(f"Using cached warehouse: {_warehouse_cache['id']}")
@@ -132,6 +151,13 @@ def get_best_warehouse() -> Optional[str]:
     if not warehouses:
         logger.warning("No SQL warehouses found in workspace")
         return None
+
+    denylist = _denylisted_ids()
+    if denylist:
+        warehouses = [w for w in warehouses if w.id not in denylist]
+        if not warehouses:
+            logger.warning("All SQL warehouses are denylisted; none to select")
+            return None
 
     # Categorize warehouses
     standard_shared = []  # Specific shared endpoint names
