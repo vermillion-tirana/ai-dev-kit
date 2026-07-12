@@ -2,8 +2,8 @@
 # Max 20 lines. Updated by agent on Stop hook.
 
 ## Feature
-Add sample_size param to execute_sql_multi (MCP + tools-core) so callers can request more than 5 displayed rows
-Add sample_size param to execute_sql_multi (MCP + tools-core) so callers can request more than 5 displayed rows
+honour DATABRICKS_WAREHOUSE_ID env pin and denylist in get_best_warehouse
+honour DATABRICKS_WAREHOUSE_ID env pin and denylist in get_best_warehouse
 
 ## Current State
 Not started. No work has been done yet.

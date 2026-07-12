@@ -1,10 +1,10 @@
-# Agent Progress - mcp-sql-sample-size
+# Agent Progress - databricks-warehouse-pin
 # Format: KEY=VALUE, one per line. Agents append, last value wins.
-# Created: 2026-05-30T03:00:16Z
+# Created: 2026-07-12T12:16:56Z
 
-feature=mcp-sql-sample-size
-name=Add sample_size param to execute_sql_multi (MCP + tools-core) so callers can request more than 5 displayed rows
+feature=databricks-warehouse-pin
+name=honour DATABRICKS_WAREHOUSE_ID env pin and denylist in get_best_warehouse
 status=pending
 step=0
 step_name=Not started
-created=2026-05-30T03:00:16Z
+created=2026-07-12T12:16:56Z
