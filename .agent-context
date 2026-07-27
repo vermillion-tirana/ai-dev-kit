@@ -2,8 +2,8 @@
 # Max 20 lines. Updated by agent on Stop hook.
 
 ## Feature
-docs: mark ai-dev-kit as vendored, do not rebase upstream
-docs: mark ai-dev-kit as vendored, do not rebase upstream
+fix: bound SDK retry timeout so warehouse calls fail fast, not after 5min
+fix: bound SDK retry timeout so warehouse calls fail fast, not after 5min
 
 ## Current State
 Not started. No work has been done yet.

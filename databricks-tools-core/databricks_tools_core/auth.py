@@ -29,6 +29,7 @@ from contextvars import ContextVar
 from typing import Optional
 
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.core import Config
 
 from .identity import PRODUCT_NAME, PRODUCT_VERSION, tag_client
 
@@ -37,6 +38,52 @@ logger = logging.getLogger(__name__)
 # Cached current username — only fetched once per process
 _current_username: Optional[str] = None
 _current_username_fetched: bool = False
+
+# How long the SDK may keep RETRYING a request before giving up.
+#
+# The SDK default is 300s (5 minutes). That is the wrong shape for an MCP server:
+# these processes are long-lived and hold pooled HTTP connections, so after a
+# laptop sleep or a network change a control-plane call that takes ~0.2s from a
+# fresh CLI process can block on a dead socket for the full five minutes. The
+# caller sees an opaque stall, not a failure. 60s fails fast enough to be
+# legible while still absorbing genuine transient throttling.
+#
+# Deliberately NOT setting `http_timeout_seconds`: that caps EVERY request,
+# including volume uploads (`upload_to_volume`), where a large file legitimately
+# takes minutes. Bounding retries fixes the hang without breaking slow-but-healthy
+# transfers.
+#
+# Override with DATABRICKS_RETRY_TIMEOUT_SECONDS (the SDK exposes no env var for
+# this — `retry_timeout_seconds` is a bare ConfigAttribute() with no `env=`).
+_DEFAULT_RETRY_TIMEOUT_SECONDS = 60
+
+
+def _retry_timeout_seconds() -> int:
+    """Retry budget for SDK calls, from env or the module default.
+
+    A non-numeric or non-positive value falls back to the default rather than
+    raising — a malformed env var must not make the client unconstructible.
+    """
+    raw = os.environ.get("DATABRICKS_RETRY_TIMEOUT_SECONDS", "").strip()
+    if not raw:
+        return _DEFAULT_RETRY_TIMEOUT_SECONDS
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning(
+            "Ignoring non-numeric DATABRICKS_RETRY_TIMEOUT_SECONDS=%r; using %ds",
+            raw,
+            _DEFAULT_RETRY_TIMEOUT_SECONDS,
+        )
+        return _DEFAULT_RETRY_TIMEOUT_SECONDS
+    if value <= 0:
+        logger.warning(
+            "Ignoring non-positive DATABRICKS_RETRY_TIMEOUT_SECONDS=%d; using %ds",
+            value,
+            _DEFAULT_RETRY_TIMEOUT_SECONDS,
+        )
+        return _DEFAULT_RETRY_TIMEOUT_SECONDS
+    return value
 
 
 def _has_oauth_credentials() -> bool:
@@ -88,8 +135,17 @@ def get_workspace_client() -> WorkspaceClient:
     host = _host_ctx.get()
     token = _token_ctx.get()
 
-    # Common kwargs for product identification in user-agent
-    product_kwargs = dict(product=PRODUCT_NAME, product_version=PRODUCT_VERSION)
+    # Product identification in the user-agent (so calls are attributable in
+    # system.access.audit) is passed explicitly at each construction site rather
+    # than splatted from a dict — a `**dict[str, str]` splat makes every
+    # WorkspaceClient parameter look str-typed to a type checker.
+
+    # Bound the retry budget on every client (see _DEFAULT_RETRY_TIMEOUT_SECONDS).
+    # `retry_timeout_seconds` is not a WorkspaceClient kwarg — it only lands via a
+    # Config. Config() with no auth args still performs the SDK's normal
+    # resolution chain (env vars, DATABRICKS_CONFIG_PROFILE, ~/.databrickscfg),
+    # so the default branch below keeps working exactly as before.
+    retry_timeout = _retry_timeout_seconds()
 
     # In Databricks Apps (OAuth credentials in env), explicitly use OAuth M2M
     # This prevents the SDK from detecting other auth methods like PAT or config file
@@ -101,22 +157,44 @@ def get_workspace_client() -> WorkspaceClient:
         # Explicitly configure OAuth M2M to prevent auth conflicts
         return tag_client(
             WorkspaceClient(
-                host=oauth_host,
-                client_id=client_id,
-                client_secret=client_secret,
-                **product_kwargs,
+                config=Config(
+                    host=oauth_host,
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    retry_timeout_seconds=retry_timeout,
+                ),
+                product=PRODUCT_NAME,
+                product_version=PRODUCT_VERSION,
             )
         )
 
     # Development mode: use explicit token if provided
     if host and token:
-        return tag_client(WorkspaceClient(host=host, token=token, **product_kwargs))
+        return tag_client(
+            WorkspaceClient(
+                config=Config(host=host, token=token, retry_timeout_seconds=retry_timeout),
+                product=PRODUCT_NAME,
+                product_version=PRODUCT_VERSION,
+            )
+        )
 
     if host:
-        return tag_client(WorkspaceClient(host=host, **product_kwargs))
+        return tag_client(
+            WorkspaceClient(
+                config=Config(host=host, retry_timeout_seconds=retry_timeout),
+                product=PRODUCT_NAME,
+                product_version=PRODUCT_VERSION,
+            )
+        )
 
     # Fall back to default authentication (env vars, config file)
-    return tag_client(WorkspaceClient(**product_kwargs))
+    return tag_client(
+        WorkspaceClient(
+            config=Config(retry_timeout_seconds=retry_timeout),
+            product=PRODUCT_NAME,
+            product_version=PRODUCT_VERSION,
+        )
+    )
 
 
 def get_current_username() -> Optional[str]:
