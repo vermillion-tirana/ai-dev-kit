@@ -1,10 +1,10 @@
-# Agent Progress - vendored-decouple-note
+# Agent Progress - bound-sdk-retry-timeout
 # Format: KEY=VALUE, one per line. Agents append, last value wins.
-# Created: 2026-07-27T22:32:34Z
+# Created: 2026-07-27T22:44:02Z
 
-feature=vendored-decouple-note
-name=docs: mark ai-dev-kit as vendored, do not rebase upstream
+feature=bound-sdk-retry-timeout
+name=fix: bound SDK retry timeout so warehouse calls fail fast, not after 5min
 status=pending
 step=0
 step_name=Not started
-created=2026-07-27T22:32:34Z
+created=2026-07-27T22:44:02Z

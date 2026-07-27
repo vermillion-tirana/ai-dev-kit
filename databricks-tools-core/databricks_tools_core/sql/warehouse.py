@@ -16,7 +16,13 @@ from ..auth import get_workspace_client, get_current_username
 logger = logging.getLogger(__name__)
 
 _warehouse_cache: dict = {"id": None, "timestamp": 0.0}
-_WAREHOUSE_CACHE_TTL = 60  # seconds
+# 60s was shorter than the gap between calls in interactive use, so an unpinned
+# server re-resolved (two control-plane round trips) before almost every query.
+# Warehouses are not volatile — 10 minutes is still far below the horizon on
+# which one is created or destroyed, and invalidate_warehouse_cache() already
+# clears it on any warehouse error, so a stale entry self-heals rather than
+# persisting. Prefer pinning DATABRICKS_WAREHOUSE_ID, which skips this entirely.
+_WAREHOUSE_CACHE_TTL = 600  # seconds
 
 
 def invalidate_warehouse_cache() -> None:

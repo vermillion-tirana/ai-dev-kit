@@ -72,18 +72,33 @@ control-plane round trips before every query (see Known sharp edges):
 Env vars are read at process spawn, so a config change needs an MCP reconnect
 (`/mcp`) or a session restart before it takes effect.
 
-## Known sharp edges (unfixed, by choice)
+## Sharp edges — fixed 2026-07-28
 
-- **`warehouses.list()` has no per-call timeout** — it inherits the SDK's
-  5-minute default. Any tool that still resolves a warehouse (`list_warehouses`,
-  `get_table_details`, `table_stats`) can therefore hang for five minutes on a
-  stale pooled connection rather than failing fast. Pinning
-  `DATABRICKS_WAREHOUSE_ID` sidesteps this for `execute_sql` (the pin returns at
-  `warehouse.py:136` with **zero** client calls — measured 0.01 ms pinned vs
-  283–546 ms unpinned on a healthy network) but does **not** cure the other tools.
-- **The warehouse cache TTL is 60s** (`_WAREHOUSE_CACHE_TTL`), shorter than the
-  gap between calls in interactive use, so an unpinned server re-resolves
-  constantly.
+- **~~`warehouses.list()` has no per-call timeout~~ — FIXED.** It inherited the
+  SDK's 300s retry default, so any tool resolving a warehouse could hang five
+  minutes on a stale pooled connection instead of failing. `get_workspace_client()`
+  now builds every client with a bounded `retry_timeout_seconds` (default **60s**,
+  override `DATABRICKS_RETRY_TIMEOUT_SECONDS`). The knob is **not** settable by
+  env var at the SDK level — `retry_timeout_seconds` is a bare `ConfigAttribute()`
+  with no `env=`, unlike `warehouse_id` — so it has to be passed via a `Config`.
+  `Config()` with no auth args still runs the SDK's normal resolution chain, so
+  profile-based auth is unaffected (verified live: PAT auth, correct identity).
+- **`http_timeout_seconds` is deliberately left unset.** Bounding *every request*
+  would cap `upload_to_volume` (~331 calls), where a large file legitimately takes
+  minutes. Bounding *retries* fixes the hang without inventing a new failure mode.
+  Pinned by `test_http_timeout_is_never_set` — if someone sets it later, that test
+  makes them justify it.
+- **~~Warehouse cache TTL 60s~~ — now 600s.** 60s was shorter than the gap between
+  calls in interactive use, so an unpinned server re-resolved (two control-plane
+  round trips) before nearly every query. `invalidate_warehouse_cache()` still
+  clears it on any warehouse error, so a stale entry self-heals.
+- **Pinning `DATABRICKS_WAREHOUSE_ID` remains the primary defence** — it returns at
+  `warehouse.py:136` with **zero** client calls (0.01 ms pinned vs 283–546 ms
+  unpinned on a healthy network). The retry bound is defence-in-depth for the paths
+  that still resolve: `list_warehouses`, `agent_bricks`.
+
+## Known sharp edges (still unfixed, by choice)
+
 - **Long-lived MCP processes hold pooled HTTP connections** that go stale across
   laptop sleep or network changes. This is why a control-plane call the CLI does
   in 0.2s can block for the full SDK timeout in a server that has been up for
@@ -93,7 +108,9 @@ Env vars are read at process spawn, so a config change needs an MCP reconnect
 *Origin: 2026-07-28. A `MERGE` that appeared to time out at 120s had actually
 finished server-side in ~20s; the missing time was warehouse discovery, and a
 follow-up query died with `Failed to list SQL warehouses: Timed out after
-0:05:00`. Fixed by pinning, not by patching upstream.*
+0:05:00`. Fixed first by pinning the warehouse, then — once the fork was
+formally vendored and patching it became cheap — by bounding the retry budget
+at source.*
 
 ## If this ever needs replacing
 
