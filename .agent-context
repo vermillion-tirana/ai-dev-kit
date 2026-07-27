@@ -2,8 +2,8 @@
 # Max 20 lines. Updated by agent on Stop hook.
 
 ## Feature
-honour DATABRICKS_WAREHOUSE_ID env pin and denylist in get_best_warehouse
-honour DATABRICKS_WAREHOUSE_ID env pin and denylist in get_best_warehouse
+docs: mark ai-dev-kit as vendored, do not rebase upstream
+docs: mark ai-dev-kit as vendored, do not rebase upstream
 
 ## Current State
 Not started. No work has been done yet.

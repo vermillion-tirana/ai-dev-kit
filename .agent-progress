@@ -1,10 +1,10 @@
-# Agent Progress - databricks-warehouse-pin
+# Agent Progress - vendored-decouple-note
 # Format: KEY=VALUE, one per line. Agents append, last value wins.
-# Created: 2026-07-12T12:16:56Z
+# Created: 2026-07-27T22:32:34Z
 
-feature=databricks-warehouse-pin
-name=honour DATABRICKS_WAREHOUSE_ID env pin and denylist in get_best_warehouse
+feature=vendored-decouple-note
+name=docs: mark ai-dev-kit as vendored, do not rebase upstream
 status=pending
 step=0
 step_name=Not started
-created=2026-07-12T12:16:56Z
+created=2026-07-27T22:32:34Z
