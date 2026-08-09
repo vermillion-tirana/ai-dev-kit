@@ -25,7 +25,9 @@ def list_volume_files(volume_path: str, max_results: int = 500) -> Dict[str, Any
         max_results: Maximum number of results to return (default: 500, max: 1000)
 
     Returns:
-        Dictionary with 'files' list and 'truncated' boolean indicating if results were limited
+        Dictionary with 'files' list and 'truncated' boolean indicating if results
+        were limited. Each file's ``last_modified`` is an ISO 8601 string (UTC),
+        matching what ``get_volume_file_info`` returns for the same file.
     """
     # Cap max_results to prevent buffer overflow (1MB JSON limit)
     max_results = min(max_results, 1000)
@@ -186,7 +188,9 @@ def get_volume_file_info(volume_path: str) -> Dict[str, Any]:
         volume_path: Path to file in volume
 
     Returns:
-        Dictionary with name, path, is_directory, file_size, last_modified
+        Dictionary with name, path, is_directory, file_size, last_modified.
+        ``last_modified`` is an ISO 8601 string (UTC), matching the format
+        ``list_volume_files`` returns for the same file.
     """
     try:
         info = _get_volume_file_metadata(volume_path)
