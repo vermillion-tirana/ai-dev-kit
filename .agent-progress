@@ -1,10 +1,10 @@
-# Agent Progress - fix-volume-file-info-lastmod
+# Agent Progress - fix-volume-files-typing
 # Format: KEY=VALUE, one per line. Agents append, last value wins.
-# Created: 2026-08-09T22:25:08Z
+# Created: 2026-08-09T23:06:57Z
 
-feature=fix-volume-file-info-lastmod
-name=fix get_volume_file_info crash on str last_modified
+feature=fix-volume-files-typing
+name=ai-dev-kit: clear pre-existing Pyright findings in volume_files
 status=pending
 step=0
 step_name=Not started
-created=2026-08-09T22:25:08Z
+created=2026-08-09T23:06:57Z
