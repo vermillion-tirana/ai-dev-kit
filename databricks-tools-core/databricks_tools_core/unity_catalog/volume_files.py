@@ -14,8 +14,6 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, List, Optional
 
-from databricks.sdk.service.files import DirectoryEntry
-
 from ..auth import get_workspace_client
 
 
@@ -143,11 +141,15 @@ def list_volume_files(volume_path: str, max_results: Optional[int] = None) -> Li
         # two read paths agree on one output shape.
         last_modified = normalise_last_modified(entry.last_modified)
 
+        # DirectoryEntry declares name / path / is_directory as Optional, while
+        # VolumeFileInfo requires str / str / bool. Coerce rather than pass None
+        # through a field the dataclass says is non-optional.
+        entry_path = entry.path or ""
         results.append(
             VolumeFileInfo(
-                name=entry.name,
-                path=entry.path,
-                is_directory=entry.is_directory,
+                name=entry.name or Path(entry_path).name,
+                path=entry_path,
+                is_directory=bool(entry.is_directory),
                 file_size=entry.file_size,
                 last_modified=last_modified,
             )
@@ -198,8 +200,17 @@ def upload_to_volume(local_path: str, volume_path: str, overwrite: bool = True) 
     try:
         w = get_workspace_client()
 
-        # Use upload_from for direct file-to-volume upload
-        w.files.upload_from(file_path=volume_path, source_path=local_path, overwrite=overwrite)
+        # Use upload_from for direct file-to-volume upload.
+        # pyright resolves `w.files` to the FilesAPI base, but at runtime it is
+        # FilesExt (databricks.sdk.mixins.files), which is where upload_from /
+        # download_to are actually defined. Verified on SDK 0.120.0:
+        #   FilesAPI.upload_from -> False, FilesExt.upload_from -> True
+        #   WorkspaceClient.files -> FilesExt
+        # so the call is correct and the finding is a stub inaccuracy. Narrow
+        # ignore rather than a blanket one, so real attribute errors still surface.
+        w.files.upload_from(  # pyright: ignore[reportAttributeAccessIssue]
+            file_path=volume_path, source_path=local_path, overwrite=overwrite
+        )
 
         return VolumeUploadResult(local_path=local_path, volume_path=volume_path, success=True)
 
@@ -244,8 +255,11 @@ def download_from_volume(volume_path: str, local_path: str, overwrite: bool = Tr
         if parent_dir and not os.path.exists(parent_dir):
             os.makedirs(parent_dir)
 
-        # Use download_to for direct volume-to-file download
-        w.files.download_to(file_path=volume_path, destination=local_path, overwrite=overwrite)
+        # Use download_to for direct volume-to-file download.
+        # Same FilesExt-vs-FilesAPI stub inaccuracy as upload_from above.
+        w.files.download_to(  # pyright: ignore[reportAttributeAccessIssue]
+            file_path=volume_path, destination=local_path, overwrite=overwrite
+        )
 
         return VolumeDownloadResult(volume_path=volume_path, local_path=local_path, success=True)
 

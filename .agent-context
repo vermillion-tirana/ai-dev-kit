@@ -2,8 +2,8 @@
 # Max 20 lines. Updated by agent on Stop hook.
 
 ## Feature
-fix get_volume_file_info crash on str last_modified
-fix get_volume_file_info crash on str last_modified
+ai-dev-kit: clear pre-existing Pyright findings in volume_files
+ai-dev-kit: clear pre-existing Pyright findings in volume_files
 
 ## Current State
 Not started. No work has been done yet.
