@@ -2,8 +2,8 @@
 # Max 20 lines. Updated by agent on Stop hook.
 
 ## Feature
-ai-dev-kit: clear pre-existing Pyright findings in volume_files
-ai-dev-kit: clear pre-existing Pyright findings in volume_files
+ai-dev-kit: correct the stale MCP process-leak assessment
+ai-dev-kit: correct the stale MCP process-leak assessment
 
 ## Current State
 Not started. No work has been done yet.
