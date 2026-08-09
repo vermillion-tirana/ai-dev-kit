@@ -1,10 +1,10 @@
-# Agent Progress - fix-volume-files-typing
+# Agent Progress - docs-mcp-process-leak
 # Format: KEY=VALUE, one per line. Agents append, last value wins.
-# Created: 2026-08-09T23:06:57Z
+# Created: 2026-08-09T23:14:17Z
 
-feature=fix-volume-files-typing
-name=ai-dev-kit: clear pre-existing Pyright findings in volume_files
+feature=docs-mcp-process-leak
+name=ai-dev-kit: correct the stale MCP process-leak assessment
 status=pending
 step=0
 step_name=Not started
-created=2026-08-09T23:06:57Z
+created=2026-08-09T23:14:17Z

@@ -135,8 +135,30 @@ Env vars are read at process spawn, so a config change needs an MCP reconnect
 - **Long-lived MCP processes hold pooled HTTP connections** that go stale across
   laptop sleep or network changes. This is why a control-plane call the CLI does
   in 0.2s can block for the full SDK timeout in a server that has been up for
-  hours. A `/mcp` reconnect also does not reap the previous server process for
-  that session (~6 MB each — noise, not a leak worth chasing).
+  hours.
+
+- **~~A `/mcp` reconnect leaks the previous server process (~6 MB each — noise,
+  not a leak worth chasing)~~ — the "noise" half of that is WRONG, measured
+  2026-08-10.** Reconnects and dead sessions never reap their server processes,
+  and they accumulate across days, not hours:
+
+  | scope | processes | resident | oldest |
+  |---|---|---|---|
+  | `databricks-mcp-server` only | 38 | **168 MB** | — |
+  | all MCP servers on the machine | **322** | **2,151 MB** | **1d 19h** |
+
+  Per-process is ~4.4 MB, close to the original estimate — the error was
+  assuming the *count* stays small. At 2.1 GB it is no longer noise. The leak
+  itself is a Claude Code client behaviour, not something this repo can fix;
+  what is fixable here is the assessment, so it is recorded rather than
+  repeated. Reaping is safe **only** for processes whose parent session is
+  already dead — a blanket kill takes out any concurrently-open session's
+  servers with it.
+
+  *Measured while verifying that a merged fix hadn't taken effect: an MCP server
+  spawned before a code change keeps serving the old module until reconnect, so
+  a library-level fix and a live-tool fix are two different claims. Verify the
+  library directly rather than through the tool when the two can disagree.*
 
 *Origin: 2026-07-28. A `MERGE` that appeared to time out at 120s had actually
 finished server-side in ~20s; the missing time was warehouse discovery, and a
