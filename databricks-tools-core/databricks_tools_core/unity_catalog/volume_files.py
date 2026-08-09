@@ -9,12 +9,75 @@ Volume paths use the format: /Volumes/<catalog>/<schema>/<volume>/<path>
 
 import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from databricks.sdk.service.files import DirectoryEntry
 
 from ..auth import get_workspace_client
+
+
+def normalise_last_modified(value: Any) -> Optional[str]:
+    """
+    Normalise a Files API ``last_modified`` value to an ISO 8601 string.
+
+    The Databricks Files API returns this field in THREE different shapes
+    depending on which endpoint produced it, and the difference is not
+    documented anywhere obvious:
+
+    * ``w.files.list_directory_contents()`` -> ``int``, epoch **milliseconds**
+      (e.g. ``1784028450000``)
+    * ``w.files.get_metadata()`` -> ``str``, an RFC 7231 HTTP-date
+      (e.g. ``'Sun, 09 Aug 2026 21:48:17 GMT'``) taken straight off the
+      ``Last-Modified`` response header
+    * some SDK versions / endpoints -> ``datetime``
+
+    Calling ``.isoformat()`` unconditionally therefore crashes with
+    ``'str' object has no attribute 'isoformat'`` on the ``get_metadata``
+    path -- which is exactly what made ``get_volume_file_info`` fail 100% of
+    the time (fixed 2026-08-10).
+
+    Returns an ISO 8601 string for every recognised shape, ``None`` for
+    ``None``, and -- deliberately -- the original value stringified if it
+    matches nothing known. Never raises: a metadata nicety must not be able
+    to fail the call that carries it.
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        return value.isoformat()
+
+    # bool is an int subclass; guard so True doesn't become 1970.
+    if isinstance(value, int) and not isinstance(value, bool):
+        # Heuristic: the Files API uses milliseconds. Anything below ~1e11 is
+        # far more plausible as seconds (1e11 s is year 5138; 1e11 ms is 1973).
+        seconds = value / 1000 if abs(value) >= 100_000_000_000 else value
+        try:
+            return datetime.fromtimestamp(seconds, tz=timezone.utc).isoformat()
+        except (OverflowError, OSError, ValueError):
+            return str(value)
+
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        # RFC 7231 HTTP-date, e.g. 'Sun, 09 Aug 2026 21:48:17 GMT'
+        try:
+            return parsedate_to_datetime(text).isoformat()
+        except (TypeError, ValueError):
+            pass
+        # Already ISO 8601? Round-trip it so the output shape is consistent.
+        try:
+            return datetime.fromisoformat(text.replace("Z", "+00:00")).isoformat()
+        except ValueError:
+            pass
+        # Unrecognised, but real: hand it back rather than lose it.
+        return text
+
+    return str(value)
 
 
 @dataclass
@@ -75,15 +138,10 @@ def list_volume_files(volume_path: str, max_results: Optional[int] = None) -> Li
 
     results = []
     for entry in w.files.list_directory_contents(volume_path):
-        # Handle last_modified - can be datetime, int (Unix timestamp), or None
-        last_modified = None
-        if entry.last_modified is not None:
-            if isinstance(entry.last_modified, int):
-                # Unix timestamp - convert to ISO format string
-                last_modified = str(entry.last_modified)
-            else:
-                # datetime object - convert to ISO format string
-                last_modified = entry.last_modified.isoformat()
+        # int (epoch ms) here, str (HTTP-date) from get_metadata, datetime on
+        # some SDK versions — normalise_last_modified() handles all three so the
+        # two read paths agree on one output shape.
+        last_modified = normalise_last_modified(entry.last_modified)
 
         results.append(
             VolumeFileInfo(
@@ -273,5 +331,7 @@ def get_volume_file_metadata(volume_path: str) -> VolumeFileInfo:
         path=volume_path,
         is_directory=False,
         file_size=metadata.content_length,
-        last_modified=metadata.last_modified.isoformat() if metadata.last_modified else None,
+        # NOT .isoformat() — get_metadata returns an RFC 7231 HTTP-date STRING,
+        # not a datetime, so the old unconditional call crashed every time.
+        last_modified=normalise_last_modified(metadata.last_modified),
     )

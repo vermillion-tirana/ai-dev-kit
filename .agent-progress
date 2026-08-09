@@ -1,10 +1,10 @@
-# Agent Progress - bound-sdk-retry-timeout
+# Agent Progress - fix-volume-file-info-lastmod
 # Format: KEY=VALUE, one per line. Agents append, last value wins.
-# Created: 2026-07-27T22:44:02Z
+# Created: 2026-08-09T22:25:08Z
 
-feature=bound-sdk-retry-timeout
-name=fix: bound SDK retry timeout so warehouse calls fail fast, not after 5min
+feature=fix-volume-file-info-lastmod
+name=fix get_volume_file_info crash on str last_modified
 status=pending
 step=0
 step_name=Not started
-created=2026-07-27T22:44:02Z
+created=2026-08-09T22:25:08Z

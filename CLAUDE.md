@@ -97,6 +97,39 @@ Env vars are read at process spawn, so a config change needs an MCP reconnect
   unpinned on a healthy network). The retry bound is defence-in-depth for the paths
   that still resolve: `list_warehouses`, `agent_bricks`.
 
+## Sharp edges — fixed 2026-08-10
+
+- **~~`get_volume_file_info` crashed 100% of the time~~ — FIXED.** It returned
+  `'str' object has no attribute 'isoformat'` for **every** valid path, so the tool
+  had never worked. Cause: `get_volume_file_metadata()` called `.isoformat()`
+  unconditionally on `w.files.get_metadata().last_modified`, but the Files API
+  returns that field in **three different shapes** depending on the endpoint, and
+  the difference is undocumented:
+
+  | source | type | example |
+  |---|---|---|
+  | `w.files.list_directory_contents()` | `int` | `1786312097000` (epoch **ms**) |
+  | `w.files.get_metadata()` | `str` | `'Sun, 09 Aug 2026 21:48:17 GMT'` (RFC 7231 HTTP-date) |
+  | some SDK versions | `datetime` | — |
+
+  `list_volume_files` had survived only because its `isinstance(int)` branch caught
+  the listing path; the `get_metadata` path had no such guard. Both now route
+  through `normalise_last_modified()` (`unity_catalog/volume_files.py`), which
+  handles all three shapes plus `None`, and **never raises** — an unparseable value
+  is returned stringified rather than failing the call that carries it. Pinned by
+  `tests/unit/test_volume_last_modified.py` (17 tests).
+
+  > **Wire change worth knowing:** `list_volume_files` now returns `last_modified`
+  > as **ISO 8601** (`2026-08-09T21:48:17+00:00`) instead of raw epoch-ms
+  > (`1786312097000`). The two read paths previously disagreed about the same file;
+  > they now agree. Nothing in either package parses this field (both pass it
+  > straight into the MCP response dict, and the dataclass already declared
+  > `Optional[str]`), so this is safe — but `list_volume_files` has ~234 recorded
+  > calls, so it is a visible output change, not an invisible one.
+
+  *Origin: 2026-08-10, found during an SMWLW triage when a post-write verification
+  of a provenance-volume upload had to fall back to `list_volume_files`.*
+
 ## Known sharp edges (still unfixed, by choice)
 
 - **Long-lived MCP processes hold pooled HTTP connections** that go stale across

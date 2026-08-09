@@ -2,8 +2,8 @@
 # Max 20 lines. Updated by agent on Stop hook.
 
 ## Feature
-fix: bound SDK retry timeout so warehouse calls fail fast, not after 5min
-fix: bound SDK retry timeout so warehouse calls fail fast, not after 5min
+fix get_volume_file_info crash on str last_modified
+fix get_volume_file_info crash on str last_modified
 
 ## Current State
 Not started. No work has been done yet.
