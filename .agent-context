@@ -2,8 +2,8 @@
 # Max 20 lines. Updated by agent on Stop hook.
 
 ## Feature
-ai-dev-kit: correct the stale MCP process-leak assessment
-ai-dev-kit: correct the stale MCP process-leak assessment
+move ruff lint/format off Actions to a pre-push hook
+move ruff lint/format off Actions to a pre-push hook
 
 ## Current State
 Not started. No work has been done yet.

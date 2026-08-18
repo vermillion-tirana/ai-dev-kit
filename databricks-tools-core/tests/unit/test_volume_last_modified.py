@@ -29,9 +29,7 @@ class TestTheBugItself:
     def test_http_date_string_parses_to_correct_instant(self):
         got = normalise_last_modified("Sun, 09 Aug 2026 21:48:17 GMT")
         assert got is not None
-        assert datetime.fromisoformat(got) == datetime(
-            2026, 8, 9, 21, 48, 17, tzinfo=timezone.utc
-        )
+        assert datetime.fromisoformat(got) == datetime(2026, 8, 9, 21, 48, 17, tzinfo=timezone.utc)
 
 
 class TestEpochMilliseconds:
@@ -41,9 +39,7 @@ class TestEpochMilliseconds:
         # 1786312097000 ms is the icmsarch minutes upload, 2026-08-09 UTC.
         got = normalise_last_modified(1786312097000)
         assert got is not None
-        assert datetime.fromisoformat(got) == datetime(
-            2026, 8, 9, 21, 48, 17, tzinfo=timezone.utc
-        )
+        assert datetime.fromisoformat(got) == datetime(2026, 8, 9, 21, 48, 17, tzinfo=timezone.utc)
 
     def test_ms_and_http_date_agree_for_the_same_instant(self):
         """The two read paths must not disagree about the same file."""
@@ -71,16 +67,12 @@ class TestOtherShapes:
         assert normalise_last_modified("   ") is None
 
     def test_iso_string_round_trips(self):
-        assert normalise_last_modified("2026-08-09T21:48:17+00:00") == (
-            "2026-08-09T21:48:17+00:00"
-        )
+        assert normalise_last_modified("2026-08-09T21:48:17+00:00") == ("2026-08-09T21:48:17+00:00")
 
     def test_iso_string_with_z_suffix(self):
         got = normalise_last_modified("2026-08-09T21:48:17Z")
         assert got is not None
-        assert datetime.fromisoformat(got) == datetime(
-            2026, 8, 9, 21, 48, 17, tzinfo=timezone.utc
-        )
+        assert datetime.fromisoformat(got) == datetime(2026, 8, 9, 21, 48, 17, tzinfo=timezone.utc)
 
     def test_bool_is_not_treated_as_epoch(self):
         # bool subclasses int; True must not become 1970-01-01.

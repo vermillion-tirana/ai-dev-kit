@@ -159,7 +159,7 @@ def execute_sql_multi(
 def _is_select_query(query: str) -> bool:
     """Check if a query is a SELECT or WITH statement."""
     stripped = query.strip().upper()
-    return stripped.startswith("SELECT") or stripped.startswith("WITH")
+    return stripped.startswith(("SELECT", "WITH"))
 
 
 def _build_batch_sql(queries: list[str]) -> str:
