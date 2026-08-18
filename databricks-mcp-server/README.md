@@ -233,6 +233,7 @@ Example:
 from databricks_tools_core.my_module import my_function as _my_function
 from ..server import mcp
 
+
 @mcp.tool
 def my_function(arg1: str, arg2: int = 10) -> dict:
     """Tool description shown to the AI."""

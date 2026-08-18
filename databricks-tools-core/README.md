@@ -75,6 +75,7 @@ from databricks_tools_core.auth import (
     get_workspace_client,
 )
 
+
 # In your request handler
 async def handle_request(user_host: str, user_token: str):
     set_databricks_auth(user_host, user_token)
@@ -217,8 +218,16 @@ Create, manage, and run Databricks jobs. Uses serverless compute by default for 
 
 ```python
 from databricks_tools_core.jobs import (
-    create_job, get_job, list_jobs, update_job, delete_job,
-    run_job_now, get_run, list_runs, cancel_run, wait_for_run,
+    create_job,
+    get_job,
+    list_jobs,
+    update_job,
+    delete_job,
+    run_job_now,
+    get_run,
+    list_runs,
+    cancel_run,
+    wait_for_run,
 )
 
 # Create a job with notebook task (serverless by default)
@@ -293,11 +302,7 @@ from databricks_tools_core.unity_catalog import catalogs, schemas, tables
 all_catalogs = catalogs.list_catalogs()
 
 # Create schema
-schema = schemas.create_schema(
-    catalog_name="main",
-    schema_name="my_schema",
-    comment="Example schema"
-)
+schema = schemas.create_schema(catalog_name="main", schema_name="my_schema", comment="Example schema")
 
 # Create table
 from databricks.sdk.service.catalog import ColumnInfo, TableType
@@ -306,11 +311,8 @@ table = tables.create_table(
     catalog_name="main",
     schema_name="my_schema",
     table_name="my_table",
-    columns=[
-        ColumnInfo(name="id", type_name="INT"),
-        ColumnInfo(name="value", type_name="STRING")
-    ],
-    table_type=TableType.MANAGED
+    columns=[ColumnInfo(name="id", type_name="INT"), ColumnInfo(name="value", type_name="STRING")],
+    table_type=TableType.MANAGED,
 )
 ```
 

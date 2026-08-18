@@ -1,13 +1,22 @@
 name: CI
 
+# TRIGGER NARROWED 2026-08-18 — `pull_request:` removed.
+#
+# The org exhausted its GitHub Free Actions allowance on 2026-08-17 (2,000
+# minutes/month shared across 68 private repos). A job that cannot start still
+# reports a RED check, so a PR trigger fails every PR having examined nothing.
+# The same ruff commands now run locally on pre-push via
+# scripts/hooks/pre-push-ci.sh, which is strictly earlier than a PR check.
+#
+# Restore `pull_request: branches: [main]` when the allowance resets if a
+# server-side backstop is wanted; the local hook does not depend on it.
 on:
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   lint:
     name: Lint & Format
-    runs-on: linux-ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
@@ -33,7 +42,7 @@ jobs:
 
   validate-skills:
     name: Validate Skills
-    runs-on: linux-ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
