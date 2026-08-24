@@ -72,64 +72,6 @@ control-plane round trips before every query (see Known sharp edges):
 Env vars are read at process spawn, so a config change needs an MCP reconnect
 (`/mcp`) or a session restart before it takes effect.
 
-## Sharp edges — fixed 2026-07-28
-
-- **~~`warehouses.list()` has no per-call timeout~~ — FIXED.** It inherited the
-  SDK's 300s retry default, so any tool resolving a warehouse could hang five
-  minutes on a stale pooled connection instead of failing. `get_workspace_client()`
-  now builds every client with a bounded `retry_timeout_seconds` (default **60s**,
-  override `DATABRICKS_RETRY_TIMEOUT_SECONDS`). The knob is **not** settable by
-  env var at the SDK level — `retry_timeout_seconds` is a bare `ConfigAttribute()`
-  with no `env=`, unlike `warehouse_id` — so it has to be passed via a `Config`.
-  `Config()` with no auth args still runs the SDK's normal resolution chain, so
-  profile-based auth is unaffected (verified live: PAT auth, correct identity).
-- **`http_timeout_seconds` is deliberately left unset.** Bounding *every request*
-  would cap `upload_to_volume` (~331 calls), where a large file legitimately takes
-  minutes. Bounding *retries* fixes the hang without inventing a new failure mode.
-  Pinned by `test_http_timeout_is_never_set` — if someone sets it later, that test
-  makes them justify it.
-- **~~Warehouse cache TTL 60s~~ — now 600s.** 60s was shorter than the gap between
-  calls in interactive use, so an unpinned server re-resolved (two control-plane
-  round trips) before nearly every query. `invalidate_warehouse_cache()` still
-  clears it on any warehouse error, so a stale entry self-heals.
-- **Pinning `DATABRICKS_WAREHOUSE_ID` remains the primary defence** — it returns at
-  `warehouse.py:136` with **zero** client calls (0.01 ms pinned vs 283–546 ms
-  unpinned on a healthy network). The retry bound is defence-in-depth for the paths
-  that still resolve: `list_warehouses`, `agent_bricks`.
-
-## Sharp edges — fixed 2026-08-10
-
-- **~~`get_volume_file_info` crashed 100% of the time~~ — FIXED.** It returned
-  `'str' object has no attribute 'isoformat'` for **every** valid path, so the tool
-  had never worked. Cause: `get_volume_file_metadata()` called `.isoformat()`
-  unconditionally on `w.files.get_metadata().last_modified`, but the Files API
-  returns that field in **three different shapes** depending on the endpoint, and
-  the difference is undocumented:
-
-  | source | type | example |
-  |---|---|---|
-  | `w.files.list_directory_contents()` | `int` | `1786312097000` (epoch **ms**) |
-  | `w.files.get_metadata()` | `str` | `'Sun, 09 Aug 2026 21:48:17 GMT'` (RFC 7231 HTTP-date) |
-  | some SDK versions | `datetime` | — |
-
-  `list_volume_files` had survived only because its `isinstance(int)` branch caught
-  the listing path; the `get_metadata` path had no such guard. Both now route
-  through `normalise_last_modified()` (`unity_catalog/volume_files.py`), which
-  handles all three shapes plus `None`, and **never raises** — an unparseable value
-  is returned stringified rather than failing the call that carries it. Pinned by
-  `tests/unit/test_volume_last_modified.py` (17 tests).
-
-  > **Wire change worth knowing:** `list_volume_files` now returns `last_modified`
-  > as **ISO 8601** (`2026-08-09T21:48:17+00:00`) instead of raw epoch-ms
-  > (`1786312097000`). The two read paths previously disagreed about the same file;
-  > they now agree. Nothing in either package parses this field (both pass it
-  > straight into the MCP response dict, and the dataclass already declared
-  > `Optional[str]`), so this is safe — but `list_volume_files` has ~234 recorded
-  > calls, so it is a visible output change, not an invisible one.
-
-  *Origin: 2026-08-10, found during an SMWLW triage when a post-write verification
-  of a provenance-volume upload had to fall back to `list_volume_files`.*
-
 ## Known sharp edges (still unfixed, by choice)
 
 - **Long-lived MCP processes hold pooled HTTP connections** that go stale across
@@ -185,3 +127,21 @@ Gaps to port before it could take over:
 **Trigger to do it:** the next time an ai-dev-kit-shaped bug costs real time. Not
 before — as of 2026-07-28 the acute problem is fixed and a rewrite would be
 optimising the wrong thing.
+
+## Structure
+
+```
+ai-dev-kit/
+├── .claude/
+├── .claude-plugin/
+├── .test/
+├── databricks-builder-app/
+├── databricks-mcp-server/
+├── databricks-skills/
+├── databricks-tools-core/
+├── hooks/
+└── scripts/
+```
+
+Sharp edges fixed in the past live in the commit history; only the still-unfixed
+ones are listed above, because those are the ones that change what you do next.
