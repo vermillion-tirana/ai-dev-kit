@@ -21,7 +21,7 @@ Five local commits, all authored here, none of them upstream:
 |---|---|
 | `d851058` | warehouse cache + batch SQL — cuts ad-hoc query cost (#1) |
 | `462fc14` | serverless-first warnings on cluster tool docstrings (#2) |
-| `7f6e4f9` | `sample_size` on `execute_sql_multi` so it returns >5 rows (#3) |
+| `7f6e4f9` | `sample_size` on `execute_sql_multi` so it returns more than the default sample (#3) |
 | `1006fe7` | **`DATABRICKS_WAREHOUSE_ID` pin + denylist** — stops auto-select grabbing a broken warehouse (#4) |
 | `d84b30c` | gitignore the harness directory |
 
@@ -42,8 +42,8 @@ Measured over 5,220 session transcripts (**6,272 calls**):
 | `execute_sql_batch` | 242 | |
 | `list_volume_files` | 234 | |
 
-**Six tools = 96.5% of all usage. 25 tools have ever been called. 74 of the 99
-registered tools have never been called once.**
+**Six tools = 96.5% of all usage. Most registered tools have never been called
+once.**
 
 The logic behind them is thin: `SQLExecutor`
 (`databricks-tools-core/databricks_tools_core/sql/sql_utils/executor.py`) is 176
