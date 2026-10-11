@@ -17,6 +17,44 @@ from databricks_mcp_server.server import mcp
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 7108  # registered in ~/.config/ports.json
 
+_LOOPBACK = ("127.0.0.1", "localhost", "[::1]")
+
+
+class LoopbackOnly:
+    """ASGI guard against DNS rebinding on the shared HTTP daemon.
+
+    A web page in the user's browser can resolve an attacker hostname to
+    127.0.0.1 and then drive these tools. Reject any request whose Host is not
+    a loopback name on our port (421), and any request carrying an Origin that
+    is not a loopback origin on our port (403). Clients that send no Origin
+    (Claude Code) pass.
+    """
+
+    def __init__(self, app, port: int):
+        self.app = app
+        self.hosts = {f"{h}:{port}".encode() for h in _LOOPBACK}
+        self.origins = {f"http://{h}:{port}".encode() for h in _LOOPBACK}
+
+    async def _deny(self, send, status: int, body: bytes):
+        await send(
+            {
+                "type": "http.response.start",
+                "status": status,
+                "headers": [(b"content-type", b"text/plain")],
+            }
+        )
+        await send({"type": "http.response.body", "body": body})
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            headers = dict(scope["headers"])
+            if headers.get(b"host") not in self.hosts:
+                return await self._deny(send, 421, b"Misdirected request")
+            origin = headers.get(b"origin")
+            if origin is not None and origin not in self.origins:
+                return await self._deny(send, 403, b"Forbidden origin")
+        await self.app(scope, receive, send)
+
 
 def main(argv=None):
     """Run over stdio (default) or as a shared HTTP daemon.
@@ -61,7 +99,14 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.transport == "http":
         # Loopback only — this process holds Databricks workspace credentials.
-        mcp.run(transport="http", host=args.host, port=args.port)
+        from starlette.middleware import Middleware
+
+        mcp.run(
+            transport="http",
+            host=args.host,
+            port=args.port,
+            middleware=[Middleware(LoopbackOnly, port=args.port)],
+        )
     else:
         mcp.run(transport="stdio")
 
