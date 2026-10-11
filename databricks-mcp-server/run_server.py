@@ -15,7 +15,7 @@ if os.environ.get("DATABRICKS_MCP_DEBUG"):
 from databricks_mcp_server.server import mcp
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 7103  # registered in ~/.config/ports.json
+DEFAULT_PORT = 7108  # registered in ~/.config/ports.json
 
 
 def main(argv=None):
@@ -29,33 +29,17 @@ def main(argv=None):
     are for Databricks Apps, not these tools. So a shared daemon pins whichever
     profile it started with, and serving both needs two daemons on two ports.
 
-    MEASURED, AND THE ANSWER IS: DO NOT DEPLOY THIS AT NORMAL LOAD.
+    This server holds no per-session state, so one daemon can serve every
+    session that uses the same profile. Measured 2026-10-11 with macOS
+    `footprint`: each stdio copy is ~120 MB physical footprint (almost all
+    swapped-out private Python heap, per `vmmap -summary`), while one HTTP
+    daemon is ~81 MB at steady state. One shared daemon therefore replaces
+    ~1.7 GB at 14 sessions. (An earlier RSS-based analysis missed the swapped
+    pages and wrongly concluded the daemon did not pay off.)
 
-    This server is not m365. The Databricks SDK is imported inside tool
-    functions rather than at module scope, so an idle stdio server never pays
-    for it — 4.3 MB each, measured across 22 live processes. A daemon pays for
-    it permanently, and grows as it serves:
-
-        idle                 21.0 MB
-        after tools/list     57.7 MB
-        after one SDK call   80.7 MB   <- steady state
-
-    One daemon at steady state (80.7 MB) nearly costs what ALL 22 stdio
-    processes cost together (94.4 MB), and two are required because the two
-    configured servers differ only by process env. So:
-
-        10 sessions   stdio  94.6 MB  vs daemons 161.4 MB   COSTS  66.8 MB
-        25 sessions   stdio 236.5 MB  vs daemons 161.4 MB   saves  75.1 MB
-
-    Break-even is ~19 sessions PER PROFILE. The observed peak is 25 sessions
-    total, so at typical load (10) this is a 67 MB regression and only at an
-    unusual peak does it pay back.
-
-    The flag is kept because it is free — stdio stays the default, nothing
-    changes unless someone passes --transport http — and because the numbers
-    above are the reason not to, which is worth being able to re-check rather
-    than re-derive. If sustained session counts ever rise past ~40, re-measure
-    and revisit.
+    Operational notes: binds loopback only (it holds workspace credentials),
+    and the daemon's working directory matters because tracked resources
+    (`.databricks-resources.json`) and project tags resolve relative to it.
 
     stdio stays the default.
     """
