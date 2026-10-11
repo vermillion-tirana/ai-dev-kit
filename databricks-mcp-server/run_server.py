@@ -90,7 +90,9 @@ def main(argv=None):
         choices=("stdio", "http"),
         default=os.environ.get("DATABRICKS_MCP_TRANSPORT", "stdio"),
     )
-    parser.add_argument("--host", default=os.environ.get("DATABRICKS_MCP_HOST", DEFAULT_HOST))
+    parser.add_argument(
+        "--host", default=os.environ.get("DATABRICKS_MCP_HOST", DEFAULT_HOST)
+    )
     parser.add_argument(
         "--port",
         type=int,

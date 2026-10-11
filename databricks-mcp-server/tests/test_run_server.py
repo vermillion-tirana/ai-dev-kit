@@ -72,9 +72,7 @@ def test_no_origin_initializes(client):
     assert "serverInfo" in r.text
 
 
-@pytest.mark.parametrize(
-    "host", ["127.0.0.1", "localhost", "[::1]"]
-)
+@pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "[::1]"])
 def test_loopback_host_and_origin_ok(client, host):
     r = _post(client, Host=f"{host}:{PORT}", Origin=f"http://{host}:{PORT}")
     assert r.status_code == 200
