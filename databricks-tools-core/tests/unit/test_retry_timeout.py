@@ -148,12 +148,12 @@ def test_http_timeout_is_never_set(captured):
 
 
 def test_product_identity_still_tagged(captured):
-    """The `**product_kwargs` splat was inlined — don't silently drop the tag.
-
-    Product identity is what makes calls attributable in system.access.audit,
-    and it belongs on WorkspaceClient (Config accepts it but exposes no
-    attribute for it).
+    """Product identity is what makes calls attributable (system.access.audit,
+    query history client_application). It must go on the Config: the SDK reads
+    WorkspaceClient(product=...) only when it builds the Config itself, so next
+    to config= it was dropped and every statement showed 'unknown'.
     """
     get_workspace_client()
-    assert captured["client_kwargs"]["product"]
-    assert captured["client_kwargs"]["product_version"]
+    assert captured["config_kwargs"]["product"]
+    assert captured["config_kwargs"]["product_version"]
+    assert "product" not in captured["client_kwargs"]
