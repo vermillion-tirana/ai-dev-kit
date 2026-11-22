@@ -77,3 +77,5 @@ windows_info.txt
 
 # Harness
 .harness/
+.agent-context
+.agent-progress

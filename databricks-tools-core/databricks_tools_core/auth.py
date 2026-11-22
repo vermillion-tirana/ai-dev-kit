@@ -147,6 +147,11 @@ def get_workspace_client() -> WorkspaceClient:
     # so the default branch below keeps working exactly as before.
     retry_timeout = _retry_timeout_seconds()
 
+    # product/product_version go on the Config, not the WorkspaceClient: the SDK
+    # only reads WorkspaceClient(product=...) when it builds the Config itself, so
+    # passed next to config= they were silently dropped and every statement showed
+    # client_application 'unknown' in query history (found 2026-11-22).
+
     # In Databricks Apps (OAuth credentials in env), explicitly use OAuth M2M
     # This prevents the SDK from detecting other auth methods like PAT or config file
     if _has_oauth_credentials():
@@ -162,9 +167,8 @@ def get_workspace_client() -> WorkspaceClient:
                     client_id=client_id,
                     client_secret=client_secret,
                     retry_timeout_seconds=retry_timeout,
+                    product=PRODUCT_NAME, product_version=PRODUCT_VERSION,
                 ),
-                product=PRODUCT_NAME,
-                product_version=PRODUCT_VERSION,
             )
         )
 
@@ -172,27 +176,21 @@ def get_workspace_client() -> WorkspaceClient:
     if host and token:
         return tag_client(
             WorkspaceClient(
-                config=Config(host=host, token=token, retry_timeout_seconds=retry_timeout),
-                product=PRODUCT_NAME,
-                product_version=PRODUCT_VERSION,
+                config=Config(host=host, token=token, retry_timeout_seconds=retry_timeout, product=PRODUCT_NAME, product_version=PRODUCT_VERSION),
             )
         )
 
     if host:
         return tag_client(
             WorkspaceClient(
-                config=Config(host=host, retry_timeout_seconds=retry_timeout),
-                product=PRODUCT_NAME,
-                product_version=PRODUCT_VERSION,
+                config=Config(host=host, retry_timeout_seconds=retry_timeout, product=PRODUCT_NAME, product_version=PRODUCT_VERSION),
             )
         )
 
     # Fall back to default authentication (env vars, config file)
     return tag_client(
         WorkspaceClient(
-            config=Config(retry_timeout_seconds=retry_timeout),
-            product=PRODUCT_NAME,
-            product_version=PRODUCT_VERSION,
+            config=Config(retry_timeout_seconds=retry_timeout, product=PRODUCT_NAME, product_version=PRODUCT_VERSION),
         )
     )
 
