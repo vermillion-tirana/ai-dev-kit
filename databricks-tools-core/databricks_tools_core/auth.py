@@ -167,7 +167,8 @@ def get_workspace_client() -> WorkspaceClient:
                     client_id=client_id,
                     client_secret=client_secret,
                     retry_timeout_seconds=retry_timeout,
-                    product=PRODUCT_NAME, product_version=PRODUCT_VERSION,
+                    product=PRODUCT_NAME,
+                    product_version=PRODUCT_VERSION,
                 ),
             )
         )
@@ -177,8 +178,11 @@ def get_workspace_client() -> WorkspaceClient:
         return tag_client(
             WorkspaceClient(
                 config=Config(
-                    host=host, token=token, retry_timeout_seconds=retry_timeout,
-                    product=PRODUCT_NAME, product_version=PRODUCT_VERSION,
+                    host=host,
+                    token=token,
+                    retry_timeout_seconds=retry_timeout,
+                    product=PRODUCT_NAME,
+                    product_version=PRODUCT_VERSION,
                 ),
             )
         )
@@ -187,8 +191,10 @@ def get_workspace_client() -> WorkspaceClient:
         return tag_client(
             WorkspaceClient(
                 config=Config(
-                    host=host, retry_timeout_seconds=retry_timeout,
-                    product=PRODUCT_NAME, product_version=PRODUCT_VERSION,
+                    host=host,
+                    retry_timeout_seconds=retry_timeout,
+                    product=PRODUCT_NAME,
+                    product_version=PRODUCT_VERSION,
                 ),
             )
         )
