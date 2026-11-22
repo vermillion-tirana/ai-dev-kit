@@ -176,14 +176,20 @@ def get_workspace_client() -> WorkspaceClient:
     if host and token:
         return tag_client(
             WorkspaceClient(
-                config=Config(host=host, token=token, retry_timeout_seconds=retry_timeout, product=PRODUCT_NAME, product_version=PRODUCT_VERSION),
+                config=Config(
+                    host=host, token=token, retry_timeout_seconds=retry_timeout,
+                    product=PRODUCT_NAME, product_version=PRODUCT_VERSION,
+                ),
             )
         )
 
     if host:
         return tag_client(
             WorkspaceClient(
-                config=Config(host=host, retry_timeout_seconds=retry_timeout, product=PRODUCT_NAME, product_version=PRODUCT_VERSION),
+                config=Config(
+                    host=host, retry_timeout_seconds=retry_timeout,
+                    product=PRODUCT_NAME, product_version=PRODUCT_VERSION,
+                ),
             )
         )
 
